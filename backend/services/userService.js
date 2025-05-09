@@ -1,7 +1,7 @@
-const pool = require('../config/db');
+const User = require('../models/User');
+const RiskAssessment = require('../models/RiskAssessment');
 
-const userService = {
-  // Get profitable users for copy trading
+module.exports = {
   getProfitableUsers: async (days = 30, minBets = 20, minROI = 10) => {
     const [rows] = await pool.query(`
       SELECT 
@@ -14,62 +14,39 @@ const userService = {
         COUNT(DISTINCT game_name) AS games_played,
         AVG(odds) AS avg_odds,
         MAX(bet_time) AS last_bet_time
-      FROM 
-        game_bets
-      WHERE 
-        bet_time >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL ? DAY)) * 1000
-      GROUP BY 
-        user_id, nick_name
-      HAVING 
-        net_profit > 0
-        AND total_bets >= ?
-        AND roi_percentage >= ?
-      ORDER BY 
-        net_profit DESC, roi_percentage DESC
+      FROM game_bets
+      WHERE bet_time >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL ? DAY)) * 1000
+      GROUP BY user_id, nick_name
+      HAVING net_profit > 0 AND total_bets >= ? AND roi_percentage >= ?
+      ORDER BY net_profit DESC, roi_percentage DESC
       LIMIT 50
     `, [days, minBets, minROI]);
     
     return rows;
   },
-
-  // Get user consistency metrics
-  getUserConsistency: async (userId) => {
-    const [rows] = await pool.query(`
-      SELECT 
-        COUNT(CASE WHEN win_amount > bet_amount THEN 1 END) / COUNT(*) * 100 AS win_rate,
-        AVG(bet_amount) AS avg_bet,
-        STDDEV(bet_amount) AS bet_stddev,
-        MAX(bet_amount) AS max_bet,
-        MIN(bet_amount) AS min_bet
-      FROM 
-        game_bets
-      WHERE 
-        user_id = ?
-    `, [userId]);
+  
+  getFullProfile: async (userId) => {
+    const user = await User.getById(userId);
+    if (!user) return null;
     
-    return rows[0];
-  },
-
-  // Get performance by game type
-  getUserPerformanceByGame: async (userId) => {
-    const [rows] = await pool.query(`
-      SELECT 
-        game_name,
-        COUNT(*) AS bets_count,
-        SUM(win_amount - bet_amount) AS net_profit,
-        SUM(win_amount - bet_amount) / SUM(bet_amount) * 100 AS roi_percentage
-      FROM 
-        game_bets
-      WHERE 
-        user_id = ?
-      GROUP BY 
-        game_name
-      ORDER BY 
-        roi_percentage DESC
-    `, [userId]);
+    const stats = await User.getStats(userId);
+    const performanceByGame = await User.getPerformanceByGame(userId);
+    const recentBets = await User.getRecentBets(userId);
+    const monthlyPerformance = await User.getMonthlyPerformance(userId);
+    const riskAssessment = await RiskAssessment.calculateScore(userId);
+    const riskHistory = await RiskAssessment.getHistory(userId);
     
-    return rows;
+    return {
+      user: {
+        user_id: userId,
+        nick_name: user.nick_name
+      },
+      stats,
+      performanceByGame,
+      recentBets,
+      monthlyPerformance,
+      riskAssessment,
+      riskHistory
+    };
   }
 };
-
-module.exports = userService;

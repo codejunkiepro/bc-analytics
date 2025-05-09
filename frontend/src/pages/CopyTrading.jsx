@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getTopUsers } from '../services/api';
-import UserCard from '../components/UserCard';
-import Filters from '../components/Filters';
+import UserCard from '../components/user-analysis/UserCard';
+import Filters from '../components/user-analysis/Filters';
 // import './CopyTrading.css';
 
 const CopyTrading = () => {
@@ -28,7 +28,7 @@ const CopyTrading = () => {
         setLoading(false);
       }
     };
-    
+
     fetchUsers();
   }, [filters]);
 
@@ -36,12 +36,12 @@ const CopyTrading = () => {
     <div className="copy-trading-page">
       <h1>Top Traders to Copy</h1>
       <p>Discover the most profitable users to replicate their betting strategies</p>
-      
+
       <Filters filters={filters} setFilters={setFilters} />
-      
+
       {loading && <div className="loading">Loading top traders...</div>}
       {error && <div className="error">{error}</div>}
-      
+
       <div className="users-grid">
         {users.map(user => (
           <UserCard key={user.user_id} user={user} />

@@ -1,9 +1,10 @@
-import CopyTrading from './pages/CopyTrading';
+// import CopyTrading from './pages/CopyTrading';
 import './App.css';
 
 function App() {
   return (
-    <CopyTrading />
+    // <CopyTrading />
+    <div>test1</div>
   );
 }
 
